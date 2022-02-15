@@ -2,9 +2,10 @@
  * @Date: 2022-02-15 16:35:15
  * @LastEditors: jimouspeng
  * @Description: ES6-Map对象
- * @LastEditTime: 2022-02-15 17:35:27
+ * @LastEditTime: 2022-02-15 18:06:49
  * @FilePath: \es6\src\map-WeakMap.js
  */
+console.log('es6-map----------------------------------------------------------------------------------------start')
 const map = new Map()
 map.set('1', 2)
 map.set('2', 2)
@@ -72,10 +73,24 @@ console.log(symbolKeyList, '获取symbok-key', symbolObj[symbolKeyList[0]])
 const jimousMap = new Map(map)
 // map.clear()
 /** new Map(map), 复制map, 同时map.clear()不会影响新map对象 */
-console.log(jimousMap, 'jimousMAP', map)
+console.log(jimousMap, 'jimousMAP', map.values(), map.entries())
 
 /**Map与WeakMap
  * WeakMap对比Map更简洁
  * WeakMap没有迭代器协议,所以用WeakMap创建的集合不可迭代
  * WeakMap中key的引用是弱保持的，如果其key的对象除了弱引用外没有其他的引用，那么该对象会被垃圾回收清除
+ * Map中的key可以是对象引用或其他，但是WeakMap中的每个Key都必须是一个对象，不能是基本类型
  */
+let wmap = new WeakMap()
+try {
+    wmap.set(1, '222') // 会报错
+} catch (err) {
+    console.log(err) // Invalid value used as weak map key
+}
+const objA = {
+    a: 1,
+}
+wmap.set(objA, 'hahah')
+console.log(wmap, '打印看看', wmap.get(objA))
+
+console.log('es6-set----------------------------------------------------------------------------------------end')
