@@ -1,12 +1,13 @@
 /*
  * @Date: 2022-02-17 14:58:56
  * @LastEditors: jimouspeng
- * @Description: es6-迭代器与生成器
- * @LastEditTime: 2022-02-17 17:53:18
+ * @Description: es6-迭代器与生成器与async/await
+ * @LastEditTime: 2022-02-18 11:43:45
  * @FilePath: \es6\src\iterator.js
  */
 console.log('es6-iterator----------------------------------------------------------------------------------------start')
 /**
+ * JS流控制机制：回调、事件、Promise、迭代器、生成器、async/await
  * ES6引入的新协议： 迭代器和可迭代对象
  * 这两个协议可以为任何对象定义迭代行为。
  * 迭代器的本质是懒惰的。迭代器序列中的元素每次只能取出一个
@@ -104,15 +105,123 @@ function playSong(src, callback) {
 
 const newPlayList = getPlayList(songList, 3)
 // console.log(...newPlayList, '打印歌单')
-player(newPlayList)
+// player(newPlayList)
 
 /**生成器函数与生成器对象
  * 生成器也是一种返回可迭代对象的函数，但是使用它不必显示声明Symbol.iterator方法的对象字面量
  * 生成器的定义方式是先创建一个函数，调用这个函数再返回生成器g，这个g是可迭代对象，可通过Array.from, ..., for...of使用
  * 生成器函数允许我们声明一种特殊的迭代器，这种迭代器会推迟代码的执行，同时保持自己的上下文。
  * 在生成器中看不到返回值的next方法，只能看到向序列中添加值的yield关键字
+ * 每当代码执行要yield，迭代器就会返回该表达式的值，而且生成器函数会暂停执行
  * 星号*是生成器函数的标志
+ * 生成器通过.throw抛出错误
+ * 生成器.return(value) 会终止生成器序列的迭代
+ * 【细节】
+ * 迭代完生成器的整个序列后，再调用.next()不会有任何变化，只会返回{done: true, value: undefined}
+ * 下面代码手动调用next()迭代之前如果执行过...扩展运算||Array.from，那么后续的.next()会返回done,因此...操作和Array.from应该是内部调用的.next()方法
+ * 【算法相关】
+ * 使用生成器遍历树
+ * 【基于生成器实现异步I/O处理，利用.next()以及return 】
  */
+function* abc() {
+    try {
+        yield 'a'
+        // console.log('000');
+    } finally {
+        yield 'b'
+        // console.log('111');
+        // return 666 // Array.from, ..., for...of 只会拿到 'a', 'b', 不会包含return的值
+        yield 'c'
+        // console.log('222');
+    }
+}
+/**  */
+const chars = abc()
+// console.log(chars.next())
+// console.log(chars.return(12), 'return') // 正常return会直接让生成器序列迭代退出，当利用try/finally，finally块内的代码会在执行流退出函数前执行，因此当存在try/finally时，会先执行完所有的yield，具体看打印
+// console.log(chars.next())
+// console.log(chars.next())
+// console.log(chars.next()) // done
+// console.log(typeof chars[Symbol.iterator] === 'function'); // true
+// console.log(typeof chars.next === 'function'); // true
+// console.log(chars[Symbol.iterator]() === chars); //  true
+console.log(Array.from(chars), 'chars.Array----------') // ['a', 'b', 'c']
+console.log(chars.next())
+// console.log(...chars, '打印迭代器') // 'a', 'b', 'c', ...执行后chars.next()只会返回done:true
+for (const number of abc()) {
+    console.log(number, '打印number')
+}
+// 手动调用next()迭代
+// while (true) {
+//     // chars.throw('生成器报错')
+//     const item = chars.next()
+//     console.log(item, '打印item')
+//     if (item.done) {
+//         break
+//     }
+// }
 
+/** 实践： 实现一个生成无穷的斐波那契数列生成器 */
+function* selfIterator() {
+    let previous = 0
+    let current = 1
+    while (true) {
+        yield current
+        const next = current + previous
+        previous = current
+        current = next
+    }
+}
+let testSelf = selfIterator()
+console.log(testSelf.next())
+console.log(testSelf.next())
+console.log(testSelf.next())
+
+/** 生成器混入可迭代对象 */
+const selfIterator2 = {
+    *[Symbol.iterator]() {
+        let previous = 0
+        let current = 1
+        while (true) {
+            yield current
+            const next = current + previous
+            previous = current
+            current = next
+        }
+    },
+}
+const testSelf2 = selfIterator2[Symbol.iterator]()
+console.log(testSelf2.next())
+console.log(testSelf2.next())
+console.log(testSelf2.next())
+for (const value of selfIterator2) {
+    console.log(value)
+    if (value > 20) {
+        // 无穷遍历防止程序奔溃
+        break
+    }
+}
+
+/** async/await
+ * 【注意】await关键字只能用于标记为async的异步函数内部。async的原理与生成器类似，只不过是在局部上下文中挂起，直至Promise返回。
+ * 如果以await修饰的表达式不是Promise, 那它会被转换为Promise.
+ */
+function getData() {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve('jimous---23333')
+        }, 2000)
+    })
+}
+async function getLastData() {
+    console.log('000000');
+    const data = await getData();
+    console.log(data);
+    console.log('111111');
+}
+
+console.log('---------');
+getLastData()
+console.log('+++++++++');
 
 console.log('es6-iterator----------------------------------------------------------------------------------------end')
