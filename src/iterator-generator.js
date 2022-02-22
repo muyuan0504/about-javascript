@@ -2,15 +2,16 @@
  * @Date: 2022-02-17 14:58:56
  * @LastEditors: jimouspeng
  * @Description: es6-迭代器与生成器与async/await
- * @LastEditTime: 2022-02-18 11:43:45
- * @FilePath: \es6\src\iterator.js
+ * @LastEditTime: 2022-02-22 14:56:28
+ * @FilePath: \es6\src\iterator-generator.js
  */
 console.log('es6-iterator----------------------------------------------------------------------------------------start')
 /**
- * JS流控制机制：回调、事件、Promise、迭代器、生成器、async/await
+ * JS流控制机制：回调、事件、Promise、迭代器、生成器、async/await、异步函数和异步迭代器，异步生成器，外部库和列表等
  * ES6引入的新协议： 迭代器和可迭代对象
  * 这两个协议可以为任何对象定义迭代行为。
  * 迭代器的本质是懒惰的。迭代器序列中的元素每次只能取出一个
+ * ES6的函数参数arguments实现了迭代器协议
  */
 const caseList = ['j', 'i', 'm', 'o', 'u', 's', 'i', 's', 'cool']
 /**
@@ -214,14 +215,14 @@ function getData() {
     })
 }
 async function getLastData() {
-    console.log('000000');
-    const data = await getData();
-    console.log(data);
-    console.log('111111');
+    console.log('000000')
+    const data = await getData()
+    console.log(data)
+    console.log('111111')
 }
 
-console.log('---------');
+console.log('---------')
 getLastData()
-console.log('+++++++++');
+console.log('+++++++++')
 
 console.log('es6-iterator----------------------------------------------------------------------------------------end')
