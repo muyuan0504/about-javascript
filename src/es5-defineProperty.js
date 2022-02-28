@@ -2,7 +2,7 @@
  * @Date: 2022-02-23 12:35:14
  * @LastEditors: jimouspeng
  * @Description: es5-Object.defineProperty
- * @LastEditTime: 2022-02-25 17:59:30
+ * @LastEditTime: 2022-02-28 11:33:45
  * @FilePath: \es6\src\es5-defineProperty.js
  */
 // https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Global_Objects/Object/defineProperty
@@ -107,7 +107,7 @@ class Dep {
 /**
  * Watcher 收到属性的变化通知并执行相应的函数，从而更新视图
  * @param {*} vm this
- * @param {*} exp key
+ * @param {*} exp 监听变化的key
  * @param {*} cb 回调函数, 更新视图
  */
 function Watcher(vm, exp, cb) {
@@ -185,27 +185,49 @@ class Compiler {
         if (this.el) {
             this.fragment = this.nodeToFragment(this.el)
             this.compileElement(this.fragment)
+            /** 将fragment重新插入到元素内 */
             this.el.appendChild(this.fragment)
         } else {
             console.log('Dom元素不存在')
         }
     }
+    /** 扩展： #text节点
+     * Text节点代表Element节点和Attribute节点的文本内容。
+     * 如果一个节点只包含一段文本，那么它就有一个Text子节点，代表该节点的文本内容。
+     * 通常我们使用Element节点的firstChild、nextSibling等属性获取Text节点，
+     * 或者使用Document节点的createTextNode方法创造一个Text节点
+     * eg: 标识#text所处的位置
+     * <div> #text <span>{{name}}</span> #text <span>{{title}}</span> #text </div>
+     */
     nodeToFragment(el) {
         // createdocumentfragment()方法创建了一虚拟的节点对象，节点对象包含所有属性和方法
         let fragment = document.createDocumentFragment()
-        let child = el.firstChild
+        let child = el.firstChild // firstChild 属性返回被选节点的第一个子节点
+        // 下面这种方式应该比循环更好理解
+        // ;[].slice.call(el.childNodes).forEach((el) => {
+        //     fragment.appendChild(el)
+        // })
         while (child) {
-            // 将Dom元素移入fragment中
+            /** 假如el中有ABCDE五个元素。
+             * 这个步骤是把el中的第一个元素A赋值给child，然后将child添加到fragment中。
+             * 但是这里有一点要注意，就是如果dom中有这个元素，appendChild相当于剪切的效果；
+             * 翻译过来就是因为DOM中有A，所以将A剪切到fragment中，
+             * 此时el中的第一个firstchild就B了。
+             * 一个节点不可能同时出现在文档的不同位置。
+             * 所以，如果某个节点已经拥有父节点，在被传递给此方法后，它首先会被移除，再被插入到新的位置。
+             * 若要保留已在文档中的节点，可以先使用  Node.cloneNode() 方法来为它创建一个副本，再将副本附加到目标父节点下。
+             * 请注意，用 cloneNode 制作的副本不会自动保持同步
+             * 以此类推，当E被剪切到fragment中后，el.firstChild就是个null了，child=el.firstChild就是false，循环终止。
+             * 之后将Dom元素移入fragment中 */
             fragment.appendChild(child)
             child = el.firstChild
         }
-        console.log(fragment, '==============')
         return fragment
     }
     compileElement(el) {
         var childNodes = el.childNodes
         var self = this
-        ;[].slice.call(childNodes).forEach(function (node) {
+        ;[].slice.call(childNodes).forEach((node) => {
             // 解析 {{}} 模板字符串
             var reg = /\{\{(.*)\}\}/
             var text = node.textContent
@@ -218,16 +240,22 @@ class Compiler {
             }
         })
     }
+    // exp: 将命中的{{}}的key加入监听
     compileText(node, exp) {
         var self = this
         var initText = this.vm[exp]
         self.updateText(node, initText) // 将初始化的数据初始化到视图中
-        new Watcher(this.vm, exp, function (value) {
+        new Watcher(this.vm, exp, (value) => {
             // 生成订阅器并绑定更新函数
             self.updateText(node, value)
         })
     }
     updateText(node, value) {
+        /** innerText和textContent的选择
+         * innerText属性值的获取会考虑CSS样式，因此读取innerText的值将触发回流以确保计算出的样式是最新的，
+         * 而回流在计算上很昂贵，会降低性能，因此应尽可能避免回流。
+         * 而textContent只是单纯读取文本内容，因此性能更高
+         */
         node.textContent = typeof value == 'undefined' ? '' : value
     }
     isTextNode(nd) {
@@ -253,7 +281,7 @@ class Compiler {
 // }
 function SelfVue(options) {
     this.vm = this
-    this.data = options.data
+    this.data = options.data 
     /** 让访问selfVue的属性代理为访问selfVue.data的属性 */
     Object.keys(this.data).forEach((key) => {
         this.proxyKeys(key) // 绑定代理属性
@@ -292,4 +320,5 @@ window.setTimeout(function () {
     console.log('name值改变了')
     // selfVue.data.name = 'jimous'
     selfVue.name = 'jimous--------'
-}, 6000)
+    console.log(selfVue)
+}, 2000)
