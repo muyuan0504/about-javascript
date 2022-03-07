@@ -2,7 +2,7 @@
  * @Date: 2022-03-02 17:14:09
  * @LastEditors: jimouspeng
  * @Description: Vue源码解读
- * @LastEditTime: 2022-03-07 11:28:00
+ * @LastEditTime: 2022-03-07 16:09:45
  * @FilePath: \es6\vue.js
  */
 
@@ -10,6 +10,9 @@
  * Vue 2.x实例化调用链
  * initMixin -> stateMixin -> eventsMixin -> lifecycleMixin -> renderMixin
  * new Vue -> this._init(options)
+ *
+ * 函数内部的方法，属性声明，局部变量，并不一定是它真实所在的声明函数作用域，
+ * 放一起仅仅只是为了方便对变量含义的理解，所以将他们放到一个函数内，仅方便阅读和思考
  */
 
 function Vue(options) {
@@ -45,6 +48,16 @@ function initMixin(Vue) {
         }
         vm._renderProxy = vm
         vm._self = vm // expose real self
+        /**
+         * 初始化生命周期
+         * Vue属性声明：
+         * $children -> []
+         * $refs -> {}
+         * _watcher -> null
+         * _isMounted -> false
+         * _isDestroyed -> false
+         * ...
+         */
         initLifecycle(vm)
         function initLifecycle(vm) {
             const options = vm.$options
@@ -56,13 +69,10 @@ function initMixin(Vue) {
                 }
                 parent.$children.push(vm)
             }
-
             vm.$parent = parent
             vm.$root = parent ? parent.$root : vm
-
             vm.$children = []
             vm.$refs = {}
-
             vm._watcher = null
             vm._inactive = null
             vm._directInactive = false
@@ -70,6 +80,12 @@ function initMixin(Vue) {
             vm._isDestroyed = false
             vm._isBeingDestroyed = false
         }
+        /**
+         * Vue发布订阅事件
+         * Vue属性声明
+         * _events -> Object.create(null)
+         * _hasHookEvent -> false
+         */
         initEvents(vm)
         function initEvents(vm) {
             vm._events = Object.create(null)
@@ -118,6 +134,9 @@ function initMixin(Vue) {
                 }
             }
         }
+        /**
+         * 初始化渲染函数
+         */
         initRender(vm)
         function initRender(vm) {
             vm._vnode = null // the root of the child tree
@@ -165,8 +184,18 @@ function initMixin(Vue) {
                 defineReactive(vm, '$listeners', options._parentListeners || emptyObject, null, true)
             }
         }
+        /**
+         * 发布 beforeCreate 生命周期
+         * 如果有订阅，_hasHookEvent?. -> $emit
+         */
         callHook(vm, 'beforeCreate')
         function callHook(vm, hook: string) {
+            const targetStack = []
+            function pushTarget(target: ?Watcher) {
+                // Dep指向dep发布订阅器
+                targetStack.push(target)
+                Dep.target = target
+            }
             // #7573 disable dep collection when invoking lifecycle hooks
             pushTarget()
             const handlers = vm.$options[hook]
@@ -179,11 +208,56 @@ function initMixin(Vue) {
             if (vm._hasHookEvent) {
                 vm.$emit('hook:' + hook)
             }
+            function popTarget() {
+                targetStack.pop()
+                Dep.target = targetStack[targetStack.length - 1]
+            }
             popTarget()
         }
+        /**
+         * 初始化inject属性，用于组件之间传值
+         * inject：
+         * 取值：从vue.$options.inject
+         * 赋值： 从vm._provided里面取，vm._provided会在initProvide赋值
+         */
         initInjections(vm) // resolve injections before data/props
         function initInjections(vm) {
+            function resolveInject(inject: any, vm: Component): ?Object {
+                if (inject) {
+                    // inject is :any because flow is not smart enough to figure out cached
+                    const result = Object.create(null)
+                    const keys = hasSymbol ? Reflect.ownKeys(inject) : Object.keys(inject)
+                    for (let i = 0; i < keys.length; i++) {
+                        const key = keys[i]
+                        // #6574 in case the inject object is observed...
+                        if (key === '__ob__') continue
+                        const provideKey = inject[key].from
+                        let source = vm
+                        while (source) {
+                            if (source._provided && hasOwn(source._provided, provideKey)) {
+                                result[key] = source._provided[provideKey]
+                                break
+                            }
+                            source = source.$parent
+                        }
+                        if (!source) {
+                            if ('default' in inject[key]) {
+                                const provideDefault = inject[key].default
+                                result[key] = typeof provideDefault === 'function' ? provideDefault.call(vm) : provideDefault
+                            } else if (process.env.NODE_ENV !== 'production') {
+                                warn(`Injection "${key}" not found`, vm)
+                            }
+                        }
+                    }
+                    return result
+                }
+            }
             const result = resolveInject(vm.$options.inject, vm)
+            // shouldObserve -》保存在observer/index.js内
+            let shouldObserve = true
+            function toggleObserving(value: boolean) {
+                shouldObserve = value
+            }
             if (result) {
                 toggleObserving(false)
                 Object.keys(result).forEach((key) => {
@@ -204,20 +278,122 @@ function initMixin(Vue) {
                 toggleObserving(true)
             }
         }
+        /**
+         * 初始化vue实例state数据
+         * 初始化 props, methods, data, computed, watch,并对_data添加响应式监听
+         */
         initState(vm)
         function initState(vm) {
             vm._watchers = []
             const opts = vm.$options
             if (opts.props) initProps(vm, opts.props)
             if (opts.methods) initMethods(vm, opts.methods)
+            function initMethods(vm: Component, methods: Object) {
+                const props = vm.$options.props
+                for (const key in methods) {
+                    if (process.env.NODE_ENV !== 'production') {
+                        if (typeof methods[key] !== 'function') {
+                            warn(
+                                `Method "${key}" has type "${typeof methods[key]}" in the component definition. ` +
+                                    `Did you reference the function correctly?`,
+                                vm
+                            )
+                        }
+                        if (props && hasOwn(props, key)) {
+                            warn(`Method "${key}" has already been defined as a prop.`, vm)
+                        }
+                        if (key in vm && isReserved(key)) {
+                            warn(
+                                `Method "${key}" conflicts with an existing Vue instance method. ` +
+                                    `Avoid defining component methods that start with _ or $.`
+                            )
+                        }
+                    }
+                    vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
+                }
+            }
             if (opts.data) {
                 initData(vm)
             } else {
                 observe((vm._data = {}), true /* asRootData */)
             }
             if (opts.computed) initComputed(vm, opts.computed)
+            function initComputed(vm: Component, computed: Object) {
+                // $flow-disable-line
+                const watchers = (vm._computedWatchers = Object.create(null))
+                // computed properties are just getters during SSR
+                const isSSR = isServerRendering()
+                for (const key in computed) {
+                    const userDef = computed[key]
+                    const getter = typeof userDef === 'function' ? userDef : userDef.get
+                    if (process.env.NODE_ENV !== 'production' && getter == null) {
+                        warn(`Getter is missing for computed property "${key}".`, vm)
+                    }
+                    if (!isSSR) {
+                        // create internal watcher for the computed property.
+                        watchers[key] = new Watcher(vm, getter || noop, noop, computedWatcherOptions)
+                    }
+                    // component-defined computed properties are already defined on the
+                    // component prototype. We only need to define computed properties defined
+                    // at instantiation here.
+                    if (!(key in vm)) {
+                        defineComputed(vm, key, userDef)
+                    } else if (process.env.NODE_ENV !== 'production') {
+                        if (key in vm.$data) {
+                            warn(`The computed property "${key}" is already defined in data.`, vm)
+                        } else if (vm.$options.props && key in vm.$options.props) {
+                            warn(`The computed property "${key}" is already defined as a prop.`, vm)
+                        } else if (vm.$options.methods && key in vm.$options.methods) {
+                            warn(`The computed property "${key}" is already defined as a method.`, vm)
+                        }
+                    }
+                }
+            }
             if (opts.watch && opts.watch !== nativeWatch) {
                 initWatch(vm, opts.watch)
+                function initWatch(vm: Component, watch: Object) {
+                    for (const key in watch) {
+                        const handler = watch[key]
+                        if (Array.isArray(handler)) {
+                            for (let i = 0; i < handler.length; i++) {
+                                createWatcher(vm, key, handler[i])
+                            }
+                        } else {
+                            createWatcher(vm, key, handler)
+                        }
+                    }
+                    function createWatcher(vm: Component, expOrFn: string | Function, handler: any, options?: Object) {
+                        if (isPlainObject(handler)) {
+                            options = handler
+                            handler = handler.handler
+                        }
+                        if (typeof handler === 'string') {
+                            handler = vm[handler]
+                        }
+                        return vm.$watch(expOrFn, handler, options)
+                    }
+                }
+            }
+            function observe(value: any, asRootData: ?boolean): Observer | void {
+                if (!isObject(value) || value instanceof VNode) {
+                    return
+                }
+                let ob: Observer | void
+                if (hasOwn(value, '__ob__') && value.__ob__ instanceof Observer) {
+                    ob = value.__ob__
+                } else if (
+                    shouldObserve &&
+                    !isServerRendering() &&
+                    (Array.isArray(value) || isPlainObject(value)) &&
+                    Object.isExtensible(value) &&
+                    !value._isVue
+                ) {
+                    ob = new Observer(value)
+                }
+                if (asRootData && ob) {
+                    ob.vmCount++
+                }
+                return ob
             }
             function initProps(vm, propsOptions) {
                 const propsData = vm.$options.propsData || {}
@@ -262,7 +438,40 @@ function initMixin(Vue) {
                 }
                 toggleObserving(true)
             }
+            function initData(vm: Component) {
+                let data = vm.$options.data
+                data = vm._data = typeof data === 'function' ? getData(data, vm) : data || {}
+                if (!isPlainObject(data)) {
+                    data = {}
+                    process.env.NODE_ENV !== 'production' &&
+                        warn('data functions should return an object:\n' + 'https://vuejs.org/v2/guide/components.html#data-Must-Be-a-Function', vm)
+                }
+                // proxy data on instance
+                const keys = Object.keys(data)
+                const props = vm.$options.props
+                const methods = vm.$options.methods
+                let i = keys.length
+                while (i--) {
+                    const key = keys[i]
+                    if (process.env.NODE_ENV !== 'production') {
+                        if (methods && hasOwn(methods, key)) {
+                            warn(`Method "${key}" has already been defined as a data property.`, vm)
+                        }
+                    }
+                    if (props && hasOwn(props, key)) {
+                        process.env.NODE_ENV !== 'production' &&
+                            warn(`The data property "${key}" is already declared as a prop. ` + `Use prop default value instead.`, vm)
+                    } else if (!isReserved(key)) {
+                        proxy(vm, `_data`, key)
+                    }
+                }
+                // observe data
+                observe(data, true /* asRootData */)
+            }
         }
+        /**
+         * 初始化provide值
+         */
         initProvide(vm) // resolve provide after data/props
         function initProvide(vm) {
             const provide = vm.$options.provide
@@ -273,6 +482,85 @@ function initMixin(Vue) {
         callHook(vm, 'created')
         if (vm.$options.el) {
             vm.$mount(vm.$options.el)
+            /**
+             * vue.$mount -> 在vue\src\platforms\web\runtime\index.js ] runtime中挂载到vue原型上
+             */
+            // public mount method
+            Vue.prototype.$mount = function (el?: string | Element, hydrating?: boolean): Component {
+                el = el && inBrowser ? query(el) : undefined
+                function mountComponent(vm: Component, el: ?Element, hydrating?: boolean): Component {
+                    vm.$el = el
+                    if (!vm.$options.render) {
+                        vm.$options.render = createEmptyVNode
+                        if (process.env.NODE_ENV !== 'production') {
+                            /* istanbul ignore if */
+                            if ((vm.$options.template && vm.$options.template.charAt(0) !== '#') || vm.$options.el || el) {
+                                warn(
+                                    'You are using the runtime-only build of Vue where the template ' +
+                                        'compiler is not available. Either pre-compile the templates into ' +
+                                        'render functions, or use the compiler-included build.',
+                                    vm
+                                )
+                            } else {
+                                warn('Failed to mount component: template or render function not defined.', vm)
+                            }
+                        }
+                    }
+                    callHook(vm, 'beforeMount')
+
+                    let updateComponent
+                    /* istanbul ignore if */
+                    if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
+                        updateComponent = () => {
+                            const name = vm._name
+                            const id = vm._uid
+                            const startTag = `vue-perf-start:${id}`
+                            const endTag = `vue-perf-end:${id}`
+
+                            mark(startTag)
+                            const vnode = vm._render()
+                            mark(endTag)
+                            measure(`vue ${name} render`, startTag, endTag)
+
+                            mark(startTag)
+                            vm._update(vnode, hydrating)
+                            mark(endTag)
+                            measure(`vue ${name} patch`, startTag, endTag)
+                        }
+                    } else {
+                        updateComponent = () => {
+                            vm._update(vm._render(), hydrating)
+                        }
+                    }
+
+                    // we set this to vm._watcher inside the watcher's constructor
+                    // since the watcher's initial patch may call $forceUpdate (e.g. inside child
+                    // component's mounted hook), which relies on vm._watcher being already defined
+                    new Watcher(
+                        vm,
+                        updateComponent,
+                        noop,
+                        {
+                            before() {
+                                if (vm._isMounted && !vm._isDestroyed) {
+                                    callHook(vm, 'beforeUpdate')
+                                }
+                            },
+                        },
+                        true /* isRenderWatcher */
+                    )
+                    hydrating = false
+
+                    // manually mounted instance, call mounted on self
+                    // mounted is called for render-created child components in its inserted hook
+                    if (vm.$vnode == null) {
+                        vm._isMounted = true
+                        callHook(vm, 'mounted')
+                    }
+                    return vm
+                }
+                return mountComponent(this, el, hydrating)
+            }
         }
     }
 }
@@ -627,11 +915,100 @@ function lifecycleMixin(Vue) {
  */
 renderMixin(Vue)
 function renderMixin(Vue) {
+    const callbacks = []
+    let pending = false
+    let timerFunc
+    function flushCallbacks() {
+        pending = false
+        const copies = callbacks.slice(0)
+        callbacks.length = 0
+        for (let i = 0; i < copies.length; i++) {
+            copies[i]()
+        }
+    }
+    // The nextTick behavior leverages the microtask queue, which can be accessed
+    // via either native Promise.then or MutationObserver.
+    // MutationObserver has wider support, however it is seriously bugged in
+    // UIWebView in iOS >= 9.3.3 when triggered in touch event handlers. It
+    // completely stops working after triggering a few times... so, if native
+    // Promise is available, we will use it:
+    /* istanbul ignore next, $flow-disable-line */
+    if (typeof Promise !== 'undefined' && isNative(Promise)) {
+        const p = Promise.resolve()
+        timerFunc = () => {
+            p.then(flushCallbacks)
+            // In problematic UIWebViews, Promise.then doesn't completely break, but
+            // it can get stuck in a weird state where callbacks are pushed into the
+            // microtask queue but the queue isn't being flushed, until the browser
+            // needs to do some other work, e.g. handle a timer. Therefore we can
+            // "force" the microtask queue to be flushed by adding an empty timer.
+            if (isIOS) setTimeout(noop)
+        }
+        isUsingMicroTask = true
+    } else if (
+        !isIE &&
+        typeof MutationObserver !== 'undefined' &&
+        (isNative(MutationObserver) ||
+            // PhantomJS and iOS 7.x
+            MutationObserver.toString() === '[object MutationObserverConstructor]')
+    ) {
+        // Use MutationObserver where native Promise is not available,
+        // e.g. PhantomJS, iOS7, Android 4.4
+        // (#6466 MutationObserver is unreliable in IE11)
+        let counter = 1
+        const observer = new MutationObserver(flushCallbacks)
+        const textNode = document.createTextNode(String(counter))
+        observer.observe(textNode, {
+            characterData: true,
+        })
+        timerFunc = () => {
+            counter = (counter + 1) % 2
+            textNode.data = String(counter)
+        }
+        isUsingMicroTask = true
+    } else if (typeof setImmediate !== 'undefined' && isNative(setImmediate)) {
+        // Fallback to setImmediate.
+        // Technically it leverages the (macro) task queue,
+        // but it is still a better choice than setTimeout.
+        timerFunc = () => {
+            setImmediate(flushCallbacks)
+        }
+    } else {
+        // Fallback to setTimeout.
+        timerFunc = () => {
+            setTimeout(flushCallbacks, 0)
+        }
+    }
     // install runtime convenience helpers
     installRenderHelpers(Vue.prototype)
     Vue.prototype.$nextTick = function (fn: Function) {
+        function nextTick(cb?: Function, ctx?: Object) {
+            let _resolve
+            callbacks.push(() => {
+                if (cb) {
+                    try {
+                        cb.call(ctx)
+                    } catch (e) {
+                        handleError(e, ctx, 'nextTick')
+                    }
+                } else if (_resolve) {
+                    _resolve(ctx)
+                }
+            })
+            if (!pending) {
+                pending = true
+                timerFunc()
+            }
+            // $flow-disable-line
+            if (!cb && typeof Promise !== 'undefined') {
+                return new Promise((resolve) => {
+                    _resolve = resolve
+                })
+            }
+        }
         return nextTick(fn, this)
     }
+    // render函数
     Vue.prototype._render = function (): VNode {
         const vm = this
         const { render, _parentVnode } = vm.$options
