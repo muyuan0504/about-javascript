@@ -1,3 +1,17 @@
+/*
+ * @Date: 2022-03-02 17:14:09
+ * @LastEditors: jimouspeng
+ * @Description: Vue源码解读
+ * @LastEditTime: 2022-03-07 11:28:00
+ * @FilePath: \es6\vue.js
+ */
+
+/**
+ * Vue 2.x实例化调用链
+ * initMixin -> stateMixin -> eventsMixin -> lifecycleMixin -> renderMixin
+ * new Vue -> this._init(options)
+ */
+
 function Vue(options) {
     if (process.env.NODE_ENV !== 'production' && !(this instanceof Vue)) {
         warn('Vue is a constructor and should be called with the `new` keyword')
@@ -5,7 +19,15 @@ function Vue(options) {
     this._init(options)
 }
 
-/** 为vue原型挂载_init方法 */
+/** 为vue原型挂载_init方法
+ * Vue挂载属性：
+ * $options -> 初始化options实例配置
+ * _renderProxy -> 指向this(Vue || 实例)
+ * _self -> 指向this
+ * isVue -> true
+ * _uid -> uid++
+ *
+ */
 initMixin(Vue)
 function initMixin(Vue) {
     Vue.prototype._init = function (options?: Object) {
@@ -26,7 +48,6 @@ function initMixin(Vue) {
         initLifecycle(vm)
         function initLifecycle(vm) {
             const options = vm.$options
-
             // locate first non-abstract parent
             let parent = options.parent
             if (parent && !options.abstract) {
@@ -57,6 +78,44 @@ function initMixin(Vue) {
             const listeners = vm.$options._parentListeners
             if (listeners) {
                 updateComponentListeners(vm, listeners)
+            }
+            function updateComponentListeners(vm: Component, listeners: Object, oldListeners: ?Object) {
+                target = vm
+                updateListeners(listeners, oldListeners || {}, add, remove, createOnceHandler, vm)
+                target = undefined
+            }
+            function updateListeners(on: Object, oldOn: Object, add: Function, remove: Function, createOnceHandler: Function, vm: Component) {
+                let name, def, cur, old, event
+                for (name in on) {
+                    def = cur = on[name]
+                    old = oldOn[name]
+                    event = normalizeEvent(name)
+                    /* istanbul ignore if */
+                    if (__WEEX__ && isPlainObject(def)) {
+                        cur = def.handler
+                        event.params = def.params
+                    }
+                    if (isUndef(cur)) {
+                        process.env.NODE_ENV !== 'production' && warn(`Invalid handler for event "${event.name}": got ` + String(cur), vm)
+                    } else if (isUndef(old)) {
+                        if (isUndef(cur.fns)) {
+                            cur = on[name] = createFnInvoker(cur, vm)
+                        }
+                        if (isTrue(event.once)) {
+                            cur = on[name] = createOnceHandler(event.name, cur, event.capture)
+                        }
+                        add(event.name, cur, event.capture, event.passive, event.params)
+                    } else if (cur !== old) {
+                        old.fns = cur
+                        on[name] = old
+                    }
+                }
+                for (name in oldOn) {
+                    if (isUndef(on[name])) {
+                        event = normalizeEvent(name)
+                        remove(event.name, oldOn[name], event.capture)
+                    }
+                }
             }
         }
         initRender(vm)
@@ -160,6 +219,49 @@ function initMixin(Vue) {
             if (opts.watch && opts.watch !== nativeWatch) {
                 initWatch(vm, opts.watch)
             }
+            function initProps(vm, propsOptions) {
+                const propsData = vm.$options.propsData || {}
+                const props = (vm._props = {})
+                // cache prop keys so that future props updates can iterate using Array
+                // instead of dynamic object key enumeration.
+                const keys = (vm.$options._propKeys = [])
+                const isRoot = !vm.$parent
+                // root instance props should be converted
+                if (!isRoot) {
+                    toggleObserving(false)
+                }
+                for (const key in propsOptions) {
+                    keys.push(key)
+                    const value = validateProp(key, propsOptions, propsData, vm)
+                    /* istanbul ignore else */
+                    if (process.env.NODE_ENV !== 'production') {
+                        const hyphenatedKey = hyphenate(key)
+                        if (isReservedAttribute(hyphenatedKey) || config.isReservedAttr(hyphenatedKey)) {
+                            warn(`"${hyphenatedKey}" is a reserved attribute and cannot be used as component prop.`, vm)
+                        }
+                        defineReactive(props, key, value, () => {
+                            if (!isRoot && !isUpdatingChildComponent) {
+                                warn(
+                                    `Avoid mutating a prop directly since the value will be ` +
+                                        `overwritten whenever the parent component re-renders. ` +
+                                        `Instead, use a data or computed property based on the prop's ` +
+                                        `value. Prop being mutated: "${key}"`,
+                                    vm
+                                )
+                            }
+                        })
+                    } else {
+                        defineReactive(props, key, value)
+                    }
+                    // static props are already proxied on the component's prototype
+                    // during Vue.extend(). We only need to proxy props defined at
+                    // instantiation here.
+                    if (!(key in vm)) {
+                        proxy(vm, `_props`, key)
+                    }
+                }
+                toggleObserving(true)
+            }
         }
         initProvide(vm) // resolve provide after data/props
         function initProvide(vm) {
@@ -201,7 +303,6 @@ function stateMixin(Vue) {
     }
     Object.defineProperty(Vue.prototype, '$data', dataDef)
     Object.defineProperty(Vue.prototype, '$props', propsDef)
-
     Vue.prototype.$set = set
     function set(target: Array<any> | Object, key: any, val: any): any {
         if (process.env.NODE_ENV !== 'production' && (isUndef(target) || isPrimitive(target))) {
@@ -327,6 +428,11 @@ function stateMixin(Vue) {
     }
 }
 
+/**
+ * 为Vue原型挂载$on,$once,$off,$emit事件订阅API
+ * $on(event, cb) -> vm._events[event].push(cb)
+ * $off -> vm._events[event] = null
+ */
 eventsMixin(Vue)
 function eventsMixin(Vue) {
     const hookRE = /^hook:/
@@ -346,7 +452,6 @@ function eventsMixin(Vue) {
         }
         return vm
     }
-
     Vue.prototype.$once = function (event: string, fn: Function) {
         const vm = this
         function on() {
@@ -357,7 +462,6 @@ function eventsMixin(Vue) {
         vm.$on(event, on)
         return vm
     }
-
     Vue.prototype.$off = function (event?: string | Array<string>, fn?: Function) {
         const vm = this
         // all
@@ -393,7 +497,6 @@ function eventsMixin(Vue) {
         }
         return vm
     }
-
     Vue.prototype.$emit = function (event: string) {
         const vm = this
         if (process.env.NODE_ENV !== 'production') {
@@ -421,13 +524,29 @@ function eventsMixin(Vue) {
     }
 }
 
+/**
+ * 声明周期相关操作
+ * 为Vue原型挂载_update,$forceUpdate,$destory方法
+ * _update(vnode, hydrating)
+ * $forceUpdate -> vm._watcher.update()
+ * $destroy ->
+ * 强制完全销毁一个实例。清理它与其它实例的连接，解绑它的全部指令及事件监听器, 包括Watcher对象从其所在Dep中释放,不会改变页面已渲染DOM
+ */
 lifecycleMixin(Vue)
 function lifecycleMixin(Vue) {
+    let activeInstance = null
     Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
         const vm = this
         const prevEl = vm.$el
         const prevVnode = vm._vnode
         const restoreActiveInstance = setActiveInstance(vm)
+        function setActiveInstance(vm) {
+            const prevActiveInstance = activeInstance
+            activeInstance = vm
+            return () => {
+                activeInstance = prevActiveInstance
+            }
+        }
         vm._vnode = vnode
         // Vue.prototype.__patch__ is injected in entry points
         // based on the rendering backend used.
@@ -453,14 +572,12 @@ function lifecycleMixin(Vue) {
         // updated hook is called by the scheduler to ensure that children are
         // updated in a parent's updated hook.
     }
-
     Vue.prototype.$forceUpdate = function () {
         const vm = this
         if (vm._watcher) {
             vm._watcher.update()
         }
     }
-
     Vue.prototype.$destroy = function () {
         const vm = this
         if (vm._isBeingDestroyed) {
@@ -505,15 +622,16 @@ function lifecycleMixin(Vue) {
     }
 }
 
+/**
+ * 为Vue原型挂载$nextTick,_render方法
+ */
 renderMixin(Vue)
 function renderMixin(Vue) {
     // install runtime convenience helpers
     installRenderHelpers(Vue.prototype)
-
     Vue.prototype.$nextTick = function (fn: Function) {
         return nextTick(fn, this)
     }
-
     Vue.prototype._render = function (): VNode {
         const vm = this
         const { render, _parentVnode } = vm.$options
