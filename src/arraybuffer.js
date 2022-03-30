@@ -56,3 +56,5 @@ console.log(x1[0], x2[0]); // 2, 2
 
 const newTypedArray = new Int32Array([1, 2, 3]);
 console.log(newTypedArray, newTypedArray.length, newTypedArray[4], newTypedArray.byteLength);
+
+
