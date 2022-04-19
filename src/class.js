@@ -1,8 +1,8 @@
 /*
  * @Date: 2022-02-21 18:24:37
- * @LastEditors: jimouspeng
+ * @LastEditors: Please set LastEditors
  * @Description: ES6-class
- * @LastEditTime: 2022-02-21 18:33:33
+ * @LastEditTime: 2022-04-11 16:55:44
  * @FilePath: \es6\src\class.js
  */
 
@@ -36,5 +36,8 @@ const jimous1 = new Jimous({ key: 1 })
 jimous1.look()
 const jimous2 = new JimousTwo({ key: 2 })
 jimous2.look() // jimous333 cool 2
+
+console.log('直接调用')
+Jimous.look(), // 直接调用
 
 console.log('es6-class----------------------------------------------------------------------------------------end')
