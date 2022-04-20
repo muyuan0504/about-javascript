@@ -1,12 +1,12 @@
-'use strict'
+'use strict';
 /*
  * @Date: 2022-02-16 10:00:12
- * @LastEditors: jimouspeng
+ * @LastEditors: Please set LastEditors
  * @Description: ES6-Proxy代理【与代理相关的操作性能还不够理想，优化空间有限，代理有可能将问题复杂化，所以谨慎使用】
- * @LastEditTime: 2022-02-17 13:30:40
+ * @LastEditTime: 2022-04-20 14:35:42
  * @FilePath: \es6\src\proxy.js
  */
-console.log('proxy----------------------------------------------------------------------------------------start')
+console.log('proxy----------------------------------------------------------------------------------------start');
 
 /**封装代理函数,可以配置禁止访问的属性规则，如_ */
 function proxied(target, flag = '_') {
@@ -16,41 +16,42 @@ function proxied(target, flag = '_') {
          * 也可以通过该捕获器转换任意属性的值，然后再将转换结果返回给回访者
          */
         get(target, key) {
-            console.log('get on property:', key)
+            console.log('get on property:', key);
             // 借助代理并定义明确的规则来禁止访问target对象的某些属性，对外只暴露代理而不暴露target对象。
             if (key.startsWith('_')) {
-                throw new Error('property is inaccessible')
+                throw new Error('property is inaccessible');
             }
             /**
              * 作为代理的补充，ES6引入了一个内置的Reflect对象。
              * es6代理的捕获器会一一地映射到Reflect对象的API。即每个捕获器在Reflect上都有一个对应的反射方法。
              */
-            return Reflect.get(target, key)
+            return Reflect.get(target, key);
             // return target[key]
             // return 'hahah'
         },
         /**set捕获器可以拦截属性赋值 */
         set(target, key, value) {
             if (key.startsWith('_')) {
-                throw new Error('不允许赋值_开头属性---------')
+                throw new Error('不允许赋值_开头属性---------');
             }
-            return Reflect.set(target, key, value)
+            console.log('set------------------------', value, key);
+            return Reflect.set(target, key, value);
         },
         /** 使用.has捕获器对in操作符隐藏任务属性
          *  但是has捕获器无法阻止Object通过.hasOwnProperty在私有空间找到属性（可以通过getOwnPropertyDescriptor捕获器）
          */
         has(target, key) {
             if (key.startsWith('_')) {
-                return false
+                return false;
             }
-            return Reflect.has(target, key)
+            return Reflect.has(target, key);
         },
         /** deleteProperty捕获器： 可以用来阻止删除操作 */
         deleteProperty(target, key) {
             if (key.startsWith('_')) {
-                throw new Error('不允许删除私有属性')
+                throw new Error('不允许删除私有属性');
             }
-            return Reflect.deleteProperty(target, key)
+            return Reflect.deleteProperty(target, key);
         },
         /** defineProperty捕获器: 用于拦截要定义的属性
          * 既可以拦截声明式定义，如 obj1.a = 1;
@@ -64,9 +65,9 @@ function proxied(target, flag = '_') {
             // 严格模式以其严格的语义确保了优异的性能，要比非严格模式好.
             // 所以严格模式也是ES6的默认模式
             if (key.startsWith('_')) {
-                throw new Error('不能设置私有属性哦---from defineProperty')
+                throw new Error('不能设置私有属性哦---from defineProperty');
             }
-            return Reflect.defineProperty(target, key, descriptor)
+            return Reflect.defineProperty(target, key, descriptor);
             // return false  // 严格模式下报错: Uncaught TypeError: 'defineProperty' on proxy: trap returned falsish for property 'exposed'
         },
         /** ownKeys捕获器，handler.ownKeys方法返回一个属性数组，这个数组也是Reflect.ownKeys()的结果
@@ -80,14 +81,14 @@ function proxied(target, flag = '_') {
          * ownKeys捕获器可覆盖所有的枚举操作，无须动用多个捕获器，唯一到注意的是，处理Symbol属性时必须小心一点
          */
         ownKeys(target) {
-            console.log(Object.getOwnPropertySymbols(target), 'symbol属性枚举')
+            console.log(Object.getOwnPropertySymbols(target), 'symbol属性枚举');
             return Reflect.ownKeys(target).filter((key) => {
                 // 过滤掉_开头的私有字符相关属性
                 if (typeof key === 'string') {
-                    return !key.startsWith('_')
+                    return !key.startsWith('_');
                 }
-                return true
-            })
+                return true;
+            });
         },
         /**
          * getOwnPropertyDescriptor捕获器，查询对象某个属性描述符触发
@@ -96,8 +97,8 @@ function proxied(target, flag = '_') {
          */
         getOwnPropertyDescriptor(target, key) {
             console.log('触发getOwnPropertyDescripto');
-            checkKey(key, 'getOwnPropertyDescriptor---非法')
-            return Reflect.getOwnPropertyDescriptor(target, key)
+            checkKey(key, 'getOwnPropertyDescriptor---非法');
+            return Reflect.getOwnPropertyDescriptor(target, key);
         },
         /**
          * apply捕获器 当代理的target函数被调用时触发
@@ -108,14 +109,14 @@ function proxied(target, flag = '_') {
          * 所有这些都可以在不改变底层target函数的前提下实现。
          */
         apply(target, ctx, args) {
-            return Reflect.apply(target, ctx, args)
+            return Reflect.apply(target, ctx, args);
         },
         /** construct捕获器：拦截 new 操作符的调用
          * 常见用例： 重组构造器的参数或者做一些本应有构造器来做的事
          */
         construct(Target, args) {
             // return new Target(...args) 等同于下面
-            return Reflect.construct(Target, args)
+            return Reflect.construct(Target, args);
         },
         /** getPrototypeOf捕获器用于拦截以下所有操作
          * 访问Object.__proto__属性
@@ -126,7 +127,7 @@ function proxied(target, flag = '_') {
          * 利用该捕获器可以动态地指定要报告的底层对象的原型
          */
         getPrototypeOf() {
-            return Array.prototype // 让某个对象在通过代理访问时被当成Array
+            return Array.prototype; // 让某个对象在通过代理访问时被当成Array
             // return xxx.prototype
         },
         /** setPrototypeOf捕获器：修改对象的原型 */
@@ -137,57 +138,61 @@ function proxied(target, flag = '_') {
         },
         /** 对象新增属性捕获器，捕获ES5新增的Object.preventExtensions方法 */
         preventExtensions(target) {
-            return Reflect.preventExtensions(target)
+            return Reflect.preventExtensions(target);
         },
         /** isExtensible捕获器用来记录或监督对Object.isExtensible的调用，但不能左右对象是否可以扩展的试试。
          * 仅有监督的作用，如果不想让用户知道底层对象是否可以扩展，可以抛出错误
          */
-        isExtensible()
-    }
+        isExtensible() {
+            return Reflect.isExtensible;
+        },
+    };
     function checkKey(key, str) {
-        if(key.startsWith(flag)) {
-            throw new Error(str)
+        if (key.startsWith(flag)) {
+            throw new Error(str);
         }
     }
-    return new Proxy(target, handler)
+    return new Proxy(target, handler);
 }
 
 const target = {
     _jimous: 'jimous is cool',
     cool: 'jimous also cool',
     [Symbol('id')]: 'sjfiosjfisoj12132',
-}
-const proxy1 = proxied(target)
+};
+target.beforeProxy = 'hhhhh';
+const proxy1 = proxied(target);
 /**通过给proxy1赋值exposed, 可以将该值传递给targt */
 try {
-    Object.defineProperty(proxy1, '_name', { value: 'jimous111' })
+    Object.defineProperty(proxy1, '_name', { value: 'jimous111' });
 } catch (err) {
-    console.log(err) // 设置了defineProperty捕获器后报错
+    console.log(err); // 设置了defineProperty捕获器后报错
 }
-proxy1.exposed = true
-proxy1.jimous = 'jimous'
+proxy1.exposed = true;
+proxy1.jimous = 'jimous';
 try {
-    proxy1._test = '1212'
+    proxy1._test = '1212';
 } catch (err) {
-    console.log(err, '赋值捕获错误')
+    console.log(err, '赋值捕获错误');
 }
 /** deleteProperty捕获器：可以通过proxy对象用delete操作符删除该属性 */
 // delete proxy1.cool
 try {
-    delete proxy1._jimous
+    delete proxy1._jimous;
 } catch (err) {
-    console.log(err)
+    console.log(err);
 }
-console.log(Object.keys(proxy1), proxy1, proxy1.cool) // undefined
-console.log(target.exposed, target.jimous, target._jimous, '打印target属性') // true, jimous, jimous is cool（删除私有属性失败）
-console.log(proxy1.jimous, proxy1.somethingElse) // jimous, undefined (触发handler.get)
+target.name = 'jimous';
+console.log(target, Object.keys(proxy1), proxy1, proxy1.cool); // undefined
+console.log(target.exposed, target.jimous, target._jimous, '打印target属性'); // true, jimous, jimous is cool（删除私有属性失败）
+console.log(proxy1.jimous, proxy1.somethingElse); // jimous, undefined (触发handler.get)
 try {
     // console.log(proxy1._test)
-    console.log('_jimous' in proxy1) // false
+    console.log('_jimous' in proxy1); // false
     // console.log(Object.getOwnPropertyDescriptor(proxy1, '_jimous'));
-    console.log(proxy1.hasOwnProperty('_jimous')) // true
+    console.log(proxy1.hasOwnProperty('_jimous')); // true
 } catch (err) {
-    console.log(err)
+    console.log(err);
 }
 
 /**可撤销代理
@@ -195,32 +200,32 @@ try {
  * 返回的是一个{proxy, revoke}对象，而不仅仅是proxy对象.
  * 调用revoke后，任何操作都会导致proxy抛出错误
  */
-let handler = {}
-const { proxy, revoke } = Proxy.revocable(target, handler)
-console.log(proxy, revoke)
-proxy.isUsable = true
-console.log(proxy.isUsable) // true
+let handler = {};
+const { proxy, revoke } = Proxy.revocable(target, handler);
+console.log(proxy, revoke);
+proxy.isUsable = true;
+console.log(proxy.isUsable); // true
 // 通过revoke可以完全收回使用者访问代理的权限
-revoke()
+revoke();
 try {
-    console.log(proxy.isUsable)
+    console.log(proxy.isUsable);
 } catch (err) {
-    console.log(err) // Cannot perform 'get' on a proxy that has been revoked
+    console.log(err); // Cannot perform 'get' on a proxy that has been revoked
 }
 // 可撤销代理实践
-const proxies = new WeakMap()
-const storage = {}
+const proxies = new WeakMap();
+const storage = {};
 function getStorage() {
-    const handler = {}
-    const { proxy, revoke } = Proxy.revocable(storage, handler)
-    proxies.set(proxy, { revoke })
-    return proxy
+    const handler = {};
+    const { proxy, revoke } = Proxy.revocable(storage, handler);
+    proxies.set(proxy, { revoke });
+    return proxy;
 }
 // 考虑到revoke和handler捕获器在同一个作用域中，可以指定严厉的访问规则，
 // 比如要是使用者企图多次访问某个私有属性，则立即撤销其对proxy的访问权
 function revokeStorage() {
-    proxies.get(proxy).revoke()
-    proxies.delete(proxy)
+    proxies.get(proxy).revoke();
+    proxies.delete(proxy);
 }
 
 /** 了解Object.defineProperty
@@ -231,30 +236,29 @@ function revokeStorage() {
 // Object.defineProperty(pizza, 'extraCheese', { value: true })
 // console.log(pizza, Object.getOwnPropertyDescriptor(pizza, 'topping'), Object.getOwnPropertyDescriptor(pizza, 'extraCheese'))
 
-
 /**apply捕获器实践 */
 const twice = {
     apply(target, ctx, args) {
-        return Reflect.apply(target, ctx, args) * 2
-    }
-}
+        return Reflect.apply(target, ctx, args) * 2;
+    },
+};
 function sum(a, b) {
     return a + b;
 }
 
 const proxy2 = new Proxy(sum, twice);
-console.log(proxy2(1,2), '函数代理打印'); // 打印6
+console.log(proxy2(1, 2), '函数代理打印'); // 打印6
 /**案例
  * 如果要保证每次调用test都返回logger对象,那么就需要将test与logger绑定，利用bind函数特性
  */
 const logger = {
     test() {
-        return this
+        return this;
     },
     test1() {
-        return this
-    }
-}
+        return this;
+    },
+};
 // logger.test = logger.test.bind(logger);
 // logger.test1 = logger.test1.bind(logger);
 // ...如果有多个函数，那么每个函数都必要通过bind进行上下文绑定, 并且上下文依然会被call(...)劫持
@@ -263,14 +267,14 @@ const logger = {
 const selfish = {
     get(target, key) {
         const value = Reflect.get(target, key);
-        if(typeof value !== 'function') {
+        if (typeof value !== 'function') {
             return value;
         }
-        return value.bind(target)
-    }
-}
+        return value.bind(target);
+    },
+};
 // 实现如下
-const proxyFun = new Proxy(logger, selfish)
+const proxyFun = new Proxy(logger, selfish);
 
 /** 改良版 */
 function selfish2(target) {
@@ -278,16 +282,16 @@ function selfish2(target) {
     const handler = {
         get(target, key) {
             const value = Reflect.get(target, key);
-            if(typeof value !== 'function') {
+            if (typeof value !== 'function') {
                 return value;
             }
-            if(!cache.has(value)) {
-                cache.set(value, value.bind(target))
+            if (!cache.has(value)) {
+                cache.set(value, value.bind(target));
             }
-            return cache.get(value)
-        }
-    }
-    return new Proxy(target, handler)
+            return cache.get(value);
+        },
+    };
+    return new Proxy(target, handler);
 }
 
 /** construct捕获器案例 */
@@ -305,14 +309,14 @@ const handleName = {
         const [name] = args;
         const target = Reflect.construct(Target, args);
         target.name = name;
-        return target
-    }
-}
+        return target;
+    },
+};
 // 通过代理，就不用每次都需要实例化之后再对name属性赋值了
 const JimousProxy = new Proxy(Jimous, handleName);
-const jimous2 = new JimousProxy('jimous222')
-const jimous3 = new JimousProxy('jimous333')
-jimous2.hello()
-jimous3.hello()
+const jimous2 = new JimousProxy('jimous222');
+const jimous3 = new JimousProxy('jimous333');
+jimous2.hello();
+jimous3.hello();
 
-console.log('proxy----------------------------------------------------------------------------------------end')
+console.log('proxy----------------------------------------------------------------------------------------end');
