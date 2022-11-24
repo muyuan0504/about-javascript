@@ -2,7 +2,7 @@
  * @Date: 2022-02-15 16:34:57
  * @LastEditors: Please set LastEditors
  * @Description: 描述文件内容
- * @LastEditTime: 2022-05-26 16:31:03
+ * @LastEditTime: 2022-11-24 11:43:16
  * @FilePath: \es6\index.html
 -->
 <!DOCTYPE html>
@@ -16,7 +16,7 @@
     <body>
         <input type="file" id="uploadInput" accept="image/*" />
         <img id="imgEl" src="" alt="" />
-        <script src="./src/index.js"></script>
+        <!-- <script src="./src/index.js"></script> -->
         <!-- <script src="./src/blob.js"></script>
         <script src="./src/linked-list.js"></script> -->
         <!-- <script src="./src/arraybuffer.js"></script> -->
@@ -31,5 +31,47 @@
         <!-- <script src="./src/proxy.js"></script> -->
         <!-- <script src="./src/set-WeakSet.js"></script>
         <script src="./src/map-WeakMap.js"></script> -->
+        <a href="javascript:void 0">跳转</a>
+        <div>
+            <button>123</button>
+        </div>
+        <image src="" alt="" />
+        <script>
+            /** 先触发事件捕获，再触发冒泡 */
+            var btn = document.querySelector('button');
+            var div = document.querySelector('div');
+
+            btn.addEventListener(
+                'click',
+                function () {
+                    console.log('btn111');
+                },
+                true
+            );
+            btn.addEventListener(
+                'click',
+                function () {
+                    console.log('btn000');
+                },
+                false
+            );
+
+            div.addEventListener(
+                'click',
+                function () {
+                    console.log('div111');
+                },
+                true
+            );
+            div.addEventListener(
+                'click',
+                function () {
+                    console.log('div000');
+                },
+                false
+            );
+
+            // 点击btn123, 依次打印： div111， btn111，btn000， div000
+        </script>
     </body>
 </html>
