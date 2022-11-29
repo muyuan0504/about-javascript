@@ -3,7 +3,7 @@
  * @Date: 2022-02-16 10:00:12
  * @LastEditors: Please set LastEditors
  * @Description: ES6-Proxy代理【与代理相关的操作性能还不够理想，优化空间有限，代理有可能将问题复杂化，所以谨慎使用】
- * @LastEditTime: 2022-04-20 14:35:42
+ * @LastEditTime: 2022-11-29 14:48:25
  * @FilePath: \es6\src\proxy.js
  */
 console.log('proxy----------------------------------------------------------------------------------------start');
@@ -318,5 +318,16 @@ const jimous2 = new JimousProxy('jimous222');
 const jimous3 = new JimousProxy('jimous333');
 jimous2.hello();
 jimous3.hello();
+
+const list = [1, 2];
+const listCopy = new Proxy(list, {
+    get(target, key) {
+        console.log(target, key, '数组能被get吗'); // [1, 2] '0' '数组能被get吗'
+        return Reflect.get(target, key);
+    },
+});
+
+console.log(list[0], listCopy[0]);
+
 
 console.log('proxy----------------------------------------------------------------------------------------end');
