@@ -329,5 +329,4 @@ const listCopy = new Proxy(list, {
 
 console.log(list[0], listCopy[0]);
 
-
 console.log('proxy----------------------------------------------------------------------------------------end');
