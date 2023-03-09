@@ -2,7 +2,7 @@
  * @Date: 2022-02-15 16:34:57
  * @LastEditors: Please set LastEditors
  * @Description: 描述文件内容
- * @LastEditTime: 2023-03-03 11:24:51
+ * @LastEditTime: 2023-03-09 18:12:01
  * @FilePath: \es6\index.html
 -->
 <!DOCTYPE html>
@@ -74,6 +74,21 @@
             );
 
             // 点击btn123, 依次打印： div111， btn111，btn000， div000
+
+            var name = '111';
+            const userinfo = {
+                age: 1,
+                name: 'jimous',
+                getname() {
+                    console.log('获取名字', this.name);
+                },
+            };
+            function getname() {
+                console.log('获取名字', this.name);
+            }
+            const getusername = getname.bind(userinfo);
+            (0, getusername)();
+            (0, userinfo.getname)(); // 逗号运算符变更this指向
         </script>
     </body>
 </html>
