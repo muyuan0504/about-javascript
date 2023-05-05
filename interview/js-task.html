@@ -31,29 +31,31 @@
                     })
                 }
                 run() {
-                    // this.excuteItv = setInterval(() => {
-                    //     if (this.taskList && this.excuteNum < this.taskExcuteMax) {
-                    //         const executeTask = this.taskList.shift()
-                    //         if (executeTask) {
-                    //             this.excuteNum++
-                    //             executeTask.executeFn().then(() => {
-                    //                 executeTask.resolveFn()
-                    //                 this.excuteNum--
-                    //             })
-                    //         }
-                    //     }
-                    //     if (this.taskList.length === 0) {
-                    //         clearInterval(this.excuteItv)
-                    //     }
-                    // }, 0)
-                    while (this.taskList.length && this.excuteNum < this.taskExcuteMax) {
-                        const executeTask = this.taskList.shift()
-                        this.excuteNum++
-                        executeTask.executeFn().then(() => {
-                            executeTask.resolveFn()
-                            this.excuteNum--
-                        })
-                    }
+                    console.log('while开始---', this.taskList)
+                    this.excuteItv = setInterval(() => {
+                        if (this.taskList && this.excuteNum < this.taskExcuteMax) {
+                            const executeTask = this.taskList.shift()
+                            if (executeTask) {
+                                this.excuteNum++
+                                executeTask.executeFn().then(() => {
+                                    executeTask.resolveFn()
+                                    this.excuteNum--
+                                })
+                            }
+                        }
+                        if (this.taskList.length === 0) {
+                            clearInterval(this.excuteItv)
+                        }
+                    }, 0)
+                    // while (this.taskList.length && this.excuteNum < this.taskExcuteMax) {
+                    //     const executeTask = this.taskList.shift()
+                    //     this.excuteNum++
+                    //     executeTask.executeFn().then(() => {
+                    //         executeTask.resolveFn()
+                    //         this.excuteNum--
+                    //     })
+                    // }
+                    console.log('while--结束')
                 }
             }
 

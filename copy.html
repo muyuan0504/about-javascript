@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Document</title>
+    </head>
+    <body>
+        <div>12345</div>
+        <input type="text" />
+        <ul>
+            <li id="copyEl">复制</li>
+        </ul>
+        <script>
+            function copy() {
+                const text = document.getElementsByTagName('input')[0].value
+                navigator.clipboard.writeText(text).then((res) => {
+                    console.log(res, 'copy')
+                    navigator.clipboard.readText().then((res) => {
+                        console.log(res, 'read')
+                    })
+                })
+            }
+
+            function copyImg() {
+                // navigator.permissions.query({ name: 'clipboard-read' }).then((result) => {
+                    // If permission to read the clipboard is granted or if the user will
+                    // be prompted to allow it, we proceed.
+                    console.log(result, '???')
+                    if (result.state == 'granted' || result.state == 'prompt') {
+                        navigator.clipboard.read().then((data) => {
+                            console.log('data: ', data)
+                            // for (let i = 0; i < data.items.length; i++) {
+                            //     if (data.items[i].type != 'text/plain') {
+                            //         alert('Clipboard contains non-text data. Unable to access it.')
+                            //     } else {
+                            //         textElem.innerText = data.items[i].getAs('text/plain')
+                            //     }
+                            // }
+                        })
+                    }
+                // })
+            }
+
+            document.getElementById('copyEl').addEventListener('click', () => {
+                copyImg()
+            })
+        </script>
+    </body>
+</html>

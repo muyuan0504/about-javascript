@@ -1,0 +1,23 @@
+{
+  "name": "es6",
+  "version": "1.0.0",
+  "description": "面试代码题记录",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jimouspeng/es6.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jimouspeng/es6/issues"
+  },
+  "homepage": "https://github.com/jimouspeng/es6#readme",
+  "dependencies": {
+    "clipboard": "^2.0.11"
+  }
+}
