@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Document</title>
+    </head>
+    <body>
+        <div>
+            <button>123</button>
+        </div>
+        <image src="" alt="" />
+        <script src="./base64.js"></script>
+        <script>
+            /** 先触发事件捕获，再触发冒泡 */
+            var btn = document.querySelector('button')
+            var div = document.querySelector('div')
+
+            /**
+             * addEventListener(type, listener);
+             * addEventListener(type, listener, options);
+             * addEventListener(type, listener, useCapture);
+             *
+             * IE仅支持冒泡事件
+             *
+             * type: 表示监听事件类型的大小写敏感的字符串
+             * listener: 当所监听的事件类型触发时，会接收到一个事件通知（实现了 Event 接口的对象）对象。listener 必须是一个实现了 EventListener 接口的对象
+             * useCapture: 一个布尔值，默认为false，表示在 DOM 树中注册了 listener 的元素，是否要先于它下面的 EventTarget 调用该 listener, 即是否开启事件捕获
+             *
+             * 当一个元素嵌套了另一个元素，并且两个元素都对同一事件注册了一个处理函数时，所发生的事件冒泡和事件捕获是两种不同的事件传播方式
+             *
+             * 当 useCapture（设为 true）时，沿着 DOM 树向上冒泡的事件不会触发 listener
+             */
+
+            // 点击btn123, 依次打印： div111， btn111，btn000， div000
+            // 对同一个DOM添加多个click事件，不会覆盖，注册了几次就会触发几次，不过事件是否是冒泡还是捕获会影响执行时机
+            btn.addEventListener(
+                'click',
+                function () {
+                    console.log('btn111')
+                },
+                true
+            )
+            btn.addEventListener(
+                'click',
+                function () {
+                    console.log('再次捕获')
+                },
+                true
+            )
+            btn.addEventListener(
+                'click',
+                function () {
+                    console.log('btn000')
+                },
+                false
+            )
+
+            div.addEventListener(
+                'click',
+                function () {
+                    console.log('div111')
+                },
+                true
+            )
+            div.addEventListener(
+                'click',
+                function () {
+                    console.log('div000')
+                },
+                false
+            )
+        </script>
+    </body>
+</html>

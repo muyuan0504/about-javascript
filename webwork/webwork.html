@@ -9,13 +9,13 @@
     <body>
         <div id="result"></div>
         <script>
-            console.log('====================================');
-            console.log(typeof Worker);
-            console.log('====================================');
-            const w = new Worker('webwork.js');
+            console.log('====================================')
+            console.log(typeof Worker)
+            console.log('====================================')
+            const w = new Worker('webwork.js')
             w.onmessage = function (event) {
-                document.getElementById('result').innerHTML = event.data;
-            };
+                document.getElementById('result').innerHTML = event.data
+            }
         </script>
     </body>
 </html>

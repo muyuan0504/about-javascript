@@ -9,8 +9,8 @@
     <body>
         <div id="app">1111111<span>1233333</span><span>222222</span><span>01333333</span></div>
         <script>
-            const domEl = document.getElementById('app');
-            console.log(domEl.childNodes);
+            const domEl = document.getElementById('app')
+            console.log(domEl.childNodes)
             // const domChildren = domEl.childNodes;
             // // 涉及三次dom操作，性能太差
             // for (let i = domChildren.length - 1; i >= 0; i--) {
@@ -19,18 +19,18 @@
             // }
 
             // range-api操作, 只涉及两次DOM操作，fragment的内部排序处理不会影响dom重排
-            var rangCtx = new Range();
-            console.log(domEl.childNodes[2].childNodes);
+            var rangCtx = new Range()
+            console.log(domEl.childNodes[2].childNodes)
             // rangCtx.setStart(domEl.childNodes[0], 1);
             // rangCtx.setEnd(domEl.childNodes[3].childNodes[0], 6);
-            rangCtx.selectNodeContents(domEl);
-            const fragmentEL = rangCtx.extractContents();
-            console.log(fragmentEL.childNodes);
-            let l = fragmentEL.childNodes.length;
+            rangCtx.selectNodeContents(domEl)
+            const fragmentEL = rangCtx.extractContents()
+            console.log(fragmentEL.childNodes)
+            let l = fragmentEL.childNodes.length
             while (l-- > 0) {
-                fragmentEL.appendChild(fragmentEL.childNodes[l]);
+                fragmentEL.appendChild(fragmentEL.childNodes[l])
             }
-            domEl.appendChild(fragmentEL);
+            domEl.appendChild(fragmentEL)
         </script>
     </body>
 </html>
