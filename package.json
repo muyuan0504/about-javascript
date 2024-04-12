@@ -1,7 +1,7 @@
 {
   "name": "es6",
   "version": "1.0.0",
-  "description": "面试代码题记录",
+  "description": "basic js",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
